@@ -46,9 +46,9 @@ php composer.phar update
     'DoctrineORMModule',
 ```
 - Update `/working/module/Application/config/module.config.php`
-  - Add a new key 'doctrine' => [ ]
-  - Add a sub-key 'driver' => [ ]
-  - Add a sub-key 'application_annotation_driver' => [ ]
+  - Add a new key `doctrine` => [ ]
+  - Add a sub-key `driver` => [ ]
+  - Add a sub-key `application_annotation_driver` => [ ]
 ```
     'application_annotation_driver' => [
         'class' => 'Doctrine\ORM\Mapping\Driver\AnnotationDriver',
@@ -56,7 +56,7 @@ php composer.phar update
         'paths' => [__DIR__ . '/../src/Application/Entity'],
     ],
 ```
-  - Add a sub-key 'orm_default' => [ ]
+  - Add a sub-key `orm_default` => [ ]
 ```
     'orm_default' => [
         'drivers' => [
@@ -96,6 +96,7 @@ vendor/bin/doctrine-module orm:generate-entities --generate-methods=GENERATE-MET
 ```
 vendor/bin/doctrine-module orm:run-dql 'select e from Application\Entity\Event e'
 ```
+- Fix any errors before proceeding
 
 ##Define Repositories
 ###Create repository classes for each entity
@@ -143,9 +144,119 @@ php -S localhost:8080 -t public
 - From the browser, access `localhost:8080`
 - Click on `Go To Admin Area`
 - You should see a list of events.  Do not attempt to list events as relationships have not yet been defined!
-- Correct any errors before proceeding
+- Fix any errors before proceeding
 
 
 ##Define Relationships
 ###Define 1:N between Event and Registration
-- 
+- NOTE: doctrine distinguishes between the "owning" side (i.e parent), and "inverse" (i.e. child).  In this case we are configuring the "owning" side.
+- Make the following changes in the `Application\Entity\Event` class
+- Add:
+```
+/**
+ * @ORM\OneToMany(targetEntity="Application\Entity\Registration", mappedBy="event")
+ */
+protected $registrations = array();
+```
+- You will also need to add a constructor which defines the new property as a doctrine `ArrayCollection`
+```    
+use Doctrine\Common\Collections\ArrayCollection;
+public function __construct()
+{
+    $this->registrations = new ArrayCollection();
+}
+```
+- And, of course, add the appropriate getters and setters.  Note that the setter adds an item to the array.
+```   
+public function getRegistrations()
+{
+    return $this->registrations;
+}
+
+/**
+ * @param Application\Entity\Registration $registration
+ */
+public function setRegistrations($registration)
+{
+    $this->registrations[] = $registration;
+}
+```
+
+###Define N:1 between Registration and Event
+- Note: we are now configuring the "inverse" side of the relationship
+- Make the following changes in the `Application\Entity\Registration` class
+- Change:
+```
+@ORM\Column(name="event_id", type="integer", precision=0, scale=0, nullable=false, unique=false)
+```
+   to:
+```
+@ORM\ManyToOne(targetEntity="Application\Entity\Event", inversedBy="registrations")
+```
+- Change:
+```
+private $eventId;
+```
+   to:
+```
+private $event;
+```
+- NOTE: we are taking advantage of the fact that a suffix of "_id" is significant to doctrine, and indicates a column which defines a foreign key relationship to another table. Thus, if doctrine sees a property `$event`, which is defined as a relationship, it will look for a column `event_id`.
+
+###Define 1:N between Registration and Attendee
+- First we configure the "owning" side of the relationship
+- Make the following changes in the `Application\Entity\Registration` class
+- Add:
+```
+/**
+ * @ORM\OneToMany(targetEntity="Application\Entity\Attendee", indexBy="id", mappedBy="registration")
+ */
+protected $attendees = array();   
+```
+- You will also need to add a constructor which defines the new property as a doctrine `ArrayCollection`
+```    
+use Doctrine\Common\Collections\ArrayCollection;
+public function __construct()
+{
+    $this->attendees = new ArrayCollection();
+}
+```
+- And, of course, add the appropriate getters and setters.  Note that the setter adds an item to the array.
+```   
+public function getAttendees() {
+    return $this->attendees;
+}
+
+/**
+ * @param Application\Entity\Attendee $attendee
+ */
+public function setAttendees(Attendee $attendee) {
+    $this->attendees[] = $attendee;
+}
+```
+
+###Define N:1 between Attendee and Registration
+- Next we configure the "inverse" side of the relationship
+- Make the following changes in the `Application\Entity\Attendee` class
+- Change:
+```
+@ORM\Column(name="registration_id", type="integer", precision=0, scale=0, nullable=false, unique=false)
+```
+   to:
+```
+@ORM\ManyToOne(targetEntity="Application\Entity\Registration", inversedBy="attendees")
+```
+- Change:
+```
+private $registrationId;
+```
+   to:
+```
+private $registration;
+```
+  
+###Update the schema
+- At this point the schema will be out of sync with the entity definitions.  You can use the command line tool to view the validation status as follows:
+```
+```
+- This would be a very good point to backup the database!  If the schema update process fails, all you need to do is to restore, adjust, and try again.
