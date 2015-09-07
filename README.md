@@ -156,7 +156,7 @@ php -S localhost:8080 -t public
 /**
  * @ORM\OneToMany(targetEntity="Application\Entity\Registration", mappedBy="event")
  */
-protected $registrations = array();
+private $registrations = array();
 ```
 - You will also need to add a constructor which defines the new property as a doctrine `ArrayCollection`
 ```    
@@ -211,7 +211,7 @@ private $event;
 /**
  * @ORM\OneToMany(targetEntity="Application\Entity\Attendee", indexBy="id", mappedBy="registration")
  */
-protected $attendees = array();   
+private $attendees = array();   
 ```
 - You will also need to add a constructor which defines the new property as a doctrine `ArrayCollection`
 ```    
@@ -258,5 +258,67 @@ private $registration;
 ###Update the schema
 - At this point the schema will be out of sync with the entity definitions.  You can use the command line tool to view the validation status as follows:
 ```
+vendor/bin/doctrine-module orm:validate-schema
 ```
 - This would be a very good point to backup the database!  If the schema update process fails, all you need to do is to restore, adjust, and try again.
+- You can now use the doctrine ORM schema tool to view what database changes are proposed
+```
+vendor/bin/doctrine-module orm:schema-tool:update --dump-sql
+```
+- To implement these changes, change the flag to `--force`
+```
+vendor/bin/doctrine-module orm:schema-tool:update --force
+```
+- Have a look at the database tables using your favorite tool and review the changes
+
+###Test the relationships
+- Rewrite `Application\Controller\AdminController::listRegistrations()` to lookup the event based on the $eventId parameter, and pass the Event entity to the view.
+```
+protected function listRegistrations($eventId)
+{
+    $event = $this->getServiceLocator()->get('application-repo-event')->find($eventId);
+    $vm = new ViewModel(array('event' => $event));
+    $vm->setTemplate('application/admin/list.phtml');
+    return $vm;
+}
+```
+- Rewrite the corresponding view template to use the Event entity to lookup registrations, and from registrations, attendees.  Note that the registration time will be returned as a `DateTime` instance.  This means you will need to use the `format()` method to produce output.
+```
+// view/application/admin/list.phtml
+<?php if (!isset($this->event)) : ?>
+Sorry! This event is not found.
+<?php else : ?>
+<table class="table table-striped">
+    <?php foreach ($this->event->getRegistrations() as $reg): ?>
+    <tr>
+        <td><?= $reg->getId() ?></td>
+        <td><?= $reg->getFirstName() ?></td>
+        <td><?= $reg->getLastName() ?></td>
+        <td><?= count($reg->getAttendees()) . ' tickets' ?></td>
+        <td>Tickets:
+            <table class="table table-striped">
+                <?php foreach ($reg->getAttendees() as $attendee): ?>
+                <tr>
+                    <td><?= $attendee->getNameOnTicket() ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </table>
+        </td>
+        <td><?= $reg->getRegistrationTime()->format('d M Y') ?></td>
+    </tr>
+    <?php endforeach; ?>
+</table>
+
+<hr />
+<?php endif; ?>
+```
+- Run the built-in PHP webserver to test:
+```
+cd /path/to/working
+php -S localhost:8080 -t public
+```
+- From the browser, access `localhost:8080`
+- Click on `Go To Admin Area`
+- Click on one of the events listed
+- You should see information on registrations and attendees for this event
+- Fix any errors before proceeding
