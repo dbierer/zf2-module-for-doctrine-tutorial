@@ -9,6 +9,9 @@
 - Make a directory `/working`
 - Copy everything in `/before/*` to `/working`
 
+###Create a directory which will hold entity classes
+- Make a directory `/working/module/Application/src/Application/Entity`
+
 ##Install and Configure Doctrine
 ###Install Doctrine module
 - Add to the `/working/composer.json` file under `require {}`
@@ -72,7 +75,77 @@ php composer.phar update
 /working/vendor/bin/doctrine-module  dbal:run-sql 'select * from event'
 ```
 
-##Create Entities
-###Generate entities
-- Use the command line tool
+##Generate Entities
+- Make a temp directory `/working/temp`
+- Review the help information for mapping conversions
 ```
+vendor/bin/doctrine-module orm:convert-mapping --help
+```
+- Use the command line tool to convert mapping from the database to annotation format
+```
+vendor/bin/doctrine-module orm:convert-mapping --from-database annotation ./temp
+```
+- Add `namespace Application\Entity;` at the top of the newly created entity mapping files
+- Copy the revised files to `/working/module/Application/src/Application/Entity`.  The reason why you need to do this is because the doctrine configuration for the `Application` module indicates the entities are in the `Application\Entity` namespace (which matches the `/working/module/Application/src/Application/Entity` folder.
+- Use the command line tool to generate getters and setters
+```
+vendor/bin/doctrine-module orm:generate-entities --generate-methods=GENERATE-METHODS --generate-annotations=GENERATE-ANNOTATIONS ./temp
+```
+- Copy the files created under `/working/temp/Application/Entity` to `/working/module/Application/src/Application/Entity`.
+- Test the entity by issuing a "DQL" (Doctrine Query Language) command
+```
+vendor/bin/doctrine-module orm:run-dql 'select e from Application\Entity\Event e'
+```
+
+##Define Repositories
+###Create repository classes for each entity
+- Create a new folder `/working/module/Application/src/Application/Repository`
+- Create a repository class for each entity, which extends `Doctrine\ORM\EntityRepository`.  You do not need to define any methods for these classes at this point.
+###Define repositories as services
+- Create service manager factories in `/working/module/Application/Module.php` which build instances of the repositories using the entity manager.
+```
+use Application\Repository;
+public function getServiceConfig()
+{
+    return [
+        'factories' => [
+            'application-repo-event' => function ($sm) {
+                $em = $sm->get('doctrine.entitymanager.orm_default');
+                return new Repository\EventRepo($em, $em->getClassMetadata('Application\Entity\Event'));
+            },
+            'application-event-registration' => function ($sm) {
+                $em = $sm->get('doctrine.entitymanager.orm_default');
+                return new Repository\RegistrationRepo($em, $em->getClassMetadata('Application\Entity\Registration'));
+            },
+            'application-repo-attendee' => function ($sm) {
+                $em = $sm->get('doctrine.entitymanager.orm_default');
+                return new Repository\AttendeeRepo($em, $em->getClassMetadata('Application\Entity\Attendee'));
+            },
+        ],
+    ];
+}
+```
+###Test the repository class
+- Rewrite `Application\Controller\AdminController::indexAction()` to use the Event repository class to find all events.
+```
+$events = $this->getServiceLocator()->get('application-repo-event')->findAll();
+```
+- Rewrite the corresponding view template to use entities
+```
+// view/application/admin/index.phtml
+<a href="/admin/<?php echo $event->getId() ?>"><?php echo $event->getName() ?></a><br />
+```
+- Run the built-in PHP webserver to test:
+```
+cd /path/to/working
+php -S localhost:8080 -t public
+```
+- From the browser, access `localhost:8080`
+- Click on `Go To Admin Area`
+- You should see a list of events.  Do not attempt to list events as relationships have not yet been defined!
+- Correct any errors before proceeding
+
+
+##Define Relationships
+###Define 1:N between Event and Registration
+- 
