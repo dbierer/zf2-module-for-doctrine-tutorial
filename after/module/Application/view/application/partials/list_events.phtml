@@ -1,0 +1,3 @@
+<?php foreach ($events as $event): ?>
+    <a href="<?= '/' . $route . '/' . $event->getId() ?>"><?= $event->getName() ?></a><br />
+<?php endforeach; ?>

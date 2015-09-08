@@ -127,7 +127,7 @@ public function getServiceConfig()
 }
 ```
 ###Test the repository class
-- Rewrite `Application\Controller\AdminController::indexAction()` to use the Event repository class to find all events.
+- Rewrite `Application\Controller\AdminController::indexAction()` to use the Event repository class to find all events
 ```
 $events = $this->getServiceLocator()->get('application-repo-event')->findAll();
 ```
@@ -136,6 +136,7 @@ $events = $this->getServiceLocator()->get('application-repo-event')->findAll();
 // view/application/admin/index.phtml
 <a href="/admin/<?php echo $event->getId() ?>"><?php echo $event->getName() ?></a><br />
 ```
+- Rewrite `Application\Controller\SignupController::indexAction()` and `view/signup/index.phtml` to use the Event repository class to find all events
 - Run the built-in PHP webserver to test:
 ```
 cd /path/to/working
@@ -149,7 +150,7 @@ php -S localhost:8080 -t public
 
 ##Define Relationships
 ###Define 1:N between Event and Registration
-- NOTE: doctrine distinguishes between the "owning" side (i.e parent), and "inverse" (i.e. child).  In this case we are configuring the "owning" side.
+NOTE: doctrine distinguishes between the "owning" side (i.e parent), and "inverse" (i.e. child).  In this case we are configuring the "owning" side.
 - Make the following changes in the `Application\Entity\Event` class
 - Add:
 ```
@@ -183,7 +184,7 @@ public function setRegistrations($registration)
 ```
 
 ###Define N:1 between Registration and Event
-- Note: we are now configuring the "inverse" side of the relationship
+You are now ready the "inverse" side of the relationship
 - Make the following changes in the `Application\Entity\Registration` class
 - Change:
 ```
@@ -201,7 +202,7 @@ private $eventId;
 ```
 private $event;
 ```
-- NOTE: we are taking advantage of the fact that a suffix of "_id" is significant to doctrine, and indicates a column which defines a foreign key relationship to another table. Thus, if doctrine sees a property `$event`, which is defined as a relationship, it will look for a column `event_id`.
+NOTE: a suffix of "_id" is significant to doctrine, and indicates a column which defines a foreign key relationship to another table. Thus, if doctrine sees a property `$event`, which is defined as a relationship, it will look for a column `event_id`.
 
 ###Define 1:N between Registration and Attendee
 - First we configure the "owning" side of the relationship
@@ -322,3 +323,124 @@ php -S localhost:8080 -t public
 - Click on one of the events listed
 - You should see information on registrations and attendees for this event
 - Fix any errors before proceeding
+
+##Collect and "Persist" Information
+So far doctrine has only been used for information retrieval (i.e. SELECT and SELECT ... FROM ... JOIN ...).  Now it is time to refactor the sign-up process and to use doctrine for storage.
+###Define a repo method to save registration data
+- Add a new method `save()` to `Application\Repository\RegistrationRepo`
+- Accept an instance of `Application\Entity\Event`, as well as first and last name strings
+- Be sure to assign a DateTime instance to the `$registrationTime` property
+- Use the entity manager `persist()` and `flush()` methods to save the data
+- Return the newly saved `Registration` instance
+```
+<?php
+namespace Application\Repository;
+
+use DateTime;
+use Doctrine\ORM\EntityRepository;
+use Application\Entity\Event;
+use Application\Entity\Registration;
+
+class RegistrationRepo extends EntityRepository
+{
+    public function save(Event $event, $first, $last)
+    {
+        $reg = new Registration();
+        $reg->setEvent($event);
+        $reg->setFirstName($first);
+        $reg->setLastName($last);
+        $reg->setRegistrationTime(new DateTime('now'));
+        $this->getEntityManager()->persist($reg);
+        $this->getEntityManager()->flush();
+        return $reg;
+    }
+} 
+```
+###Define a repo method to save attendee data
+- Add a new method `save()` to `Application\Repository\AttendeeRepo`
+- Accept an instance of `Application\Entity\Registration`, as well as a name string
+- Return the newly saved `Attendee` instance
+```
+<?php
+namespace Application\Repository;
+
+use Doctrine\ORM\EntityRepository;
+use Application\Entity\Registration;
+use Application\Entity\Attendee;
+
+class AttendeeRepo extends EntityRepository
+{
+    public function save(Registration $reg, $nameOnTicket)
+    {
+        $attendee = new Attendee();
+        $attendee->setNameOnTicket($nameOnTicket);
+        $attendee->setRegistration($reg);
+        $this->getEntityManager()->persist($attendee);
+        $this->getEntityManager()->flush();
+        return $attendee;
+    }
+} 
+```
+###Refactor the event signup process
+- In `Application\Controller\SignupController::eventSignup()` to use the event repository to lookup the event based on the `$eventId` property
+```
+protected function eventSignup($eventId)
+{
+    /** @var \Application\Model\EventTable $eventTable */
+    //$eventTable = $this->serviceLocator->get('EventTable');
+    //$event = $eventTable->findById($eventId);
+    $event = $this->getServiceLocator()->get('application-repo-event')->find($eventId);
+
+    if (!$event) {
+        // better 404 experience?
+        return $this->notFoundAction();
+    }
+
+    if ($this->request->isPost()) {
+        $this->processForm($this->params()->fromPost(), $event);
+        return $this->redirect()->toUrl('/thank-you');
+    }
+
+    $vm = new ViewModel(array('event' => $event));
+    $vm->setTemplate('application/signup/form.phtml');
+    return $vm;
+}
+```
+- Rewrite `application/signup/index.phtml` to use the event entity.  You can use the code in `application/admin/index.phtml` as a guide.
+```
+<?php foreach ($events as $event): ?>
+    <a href="/signup/<?php echo $event->getId() ?>"><?php echo $event->getName() ?></a><br />
+<?php endforeach; ?>
+```
+- Rewrite `application/signup/form.phtml` to use the event entity
+```
+// change the form action
+<form class="form-horizontal" action="/signup/<?= $event->getId() ?>" method="POST">
+// change how the event name is displayed
+<span class=""><?= $event->getName() ?></span>
+```
+- Rewrite `Application\Controller\SignupController::processForm()` to store entity information
+- Use the `save()` method of the registration repo to save the initial registration data
+- In the loop for ticket names, use the `save()` method of the attendee repo to save attendee info
+- Add each `Attendee` entity to the list of attendees for the `Registration` instance
+- When the loop has complete, use the entity manager to persist and flush the updated `Registration` instance
+```
+protected function processForm(array $formData, $event)
+{
+    $formData = $this->sanitizeData($formData);
+    $regRepo = $this->getServiceLocator()->get('application-repo-registration');
+    $reg = $regRepo->save($event, $formData['first_name'], $formData['last_name']);
+
+    $ticketData = $formData['ticket'];
+    $attendeeRepo = $this->getServiceLocator()->get('application-repo-attendee');
+    foreach ($ticketData as $nameOnTicket) {
+        $attendee = $attendeeRepo->save($reg, $nameOnTicket);
+        $reg->setAttendees($attendee);
+    }
+    $em = $this->getServiceLocator()->get('doctrine.entitymanager.orm_default');
+    $em->persist($reg);
+    $em->flush();
+    
+    return true;
+}
+```

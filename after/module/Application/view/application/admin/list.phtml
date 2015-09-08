@@ -1,0 +1,22 @@
+
+<table class="table table-striped">
+    <?php foreach ($event->getRegistrations() as $reg): ?>
+    <?php     $attendeeList = $reg->getAttendees(); ?>
+    <tr>
+        <td><?= $reg->getId() ?></td>
+        <td><?= $reg->getFirstName() ?></td>
+        <td><?= $reg->getLastName() ?></td>
+        <td><?= count($attendeeList) . ' tickets' ?></td>
+        <td>Tickets:
+            <table class="table table-striped">
+                <?php foreach ($attendeeList as $attendee): ?>
+                <tr><td><?= $attendee->getName() ?></td></tr>
+                <?php endforeach; ?>
+            </table>
+        </td>
+        <td><?= $reg->getRegistrationTime()->format('l, d m Y') ?></td>
+    </tr>
+    <?php endforeach; ?>
+</table>
+
+<hr />

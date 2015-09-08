@@ -1,0 +1,136 @@
+Modeling Module
+
+Your consulting company has been contracted several times to build a system to
+handle reserved seating events such as private dinners and limited seating
+entertainment events.  Each time, your company has built a simple and custom
+interface to satisfy each contract, but now you've been tasked with building a
+prototype of a flexible system that can handle multiple events.
+
+For the original custom systems, you might have simply extended TableGatway or
+used TableGateway directly as a Model.  In this lab, we'll add a single layer
+of abstraction into the Model so that TableGateway is not exposed to the
+controllers and to have enough abstraction in the model to be able to grow the
+model as new requirements come in for this prototype.
+
+Model Terminology
+
+In this exercise, the models will be built using the Table Module pattern.  This
+is a Patterns of Enterprise Application Architecture pattern, and can be found
+online here:
+
+http://martinfowler.com/eaaCatalog/tableModule.html
+
+The goal of this particular pattern is to keep the model per table association,
+but provides a new layer where business logic can reside and be separate from
+the API that interacts directly with the database.  In this exercise, our Table
+Modules will consume Table Gateway objects for their persistence of data.
+
+A Table Modules's primary responsibility is for encapsulating business logic.
+It is not quite a "Domain Model" with complete separation from the persistence
+layer, but a small abstraction that still maintains a 1 to 1 table module to
+table row assocation.  Think of using Table Modules as a good solution for "just
+enough" abstraction between your business models and the persistence medium.
+
+As such, the API of a Table Module will differ than that of the Table Gateway.
+In Table Gateway, you'll see database centric names for methods like select,
+update, insert, delete.  In Table Module, you might be better served by using
+persistence agnostic terms like find, persist and remove.
+
+In some instances if you feel there may be a significant possibility that there
+might be more than a single kind of persistence technology, one might want to
+first build an interface for the Table Modules.  In our case, MySQL is the only
+target persistence, and as such, there will be no initial interfaces for our
+Table Modules.
+
+Additionally, each model (Table Module) will also address any mapping concerns
+and data sets will be accepted and returned as simple PHP arrays.
+
+Also, Table Modules generally do not map inheritance or relationships in the
+data.
+
+Note: while there is a 1-1 relationship between Table Modules and physical
+tables, Table Module classes can utilize database specific features (like a
+JOIN) to extract necessary information from other tables in order to produce a
+lightweight model where appropriate.  There is an example of this in this
+exercise.
+
+Also note: The Table Modules in this exercise will have a dependency on a DB
+Adapter, but in the constructor should instantiate a TableGateway object.
+This is the correct course of action because the TableGateway object is
+considered a utility and not a shared dependency (Table Modules have a 1-1
+mapping with a particular table, and the best way to ensure this is by creating
+the TableGateway class yourself).  The service factories should also reflect
+this design decision.
+
+Specifications:
+
+    Your boss tells you the code name for this project is "Registrator".
+
+    Client side:
+        User chooses Event and # of tickets
+        User Registers and enters names of attendees
+
+    Admin side:
+        Ability to browse
+            events > registrations > attendees
+
+
+Create Skeleton App
+
+    composer.phar create-project -s dev --repository-url="http://packages.zendframework.com" zendframework/skeleton-application ./zf2-course-models-module
+
+Create a Module:
+
+    <see previous course>
+
+    cd into ./module
+    wget https://github.com/zendframework/ZendSkeletonModule/archive/master.zip
+    unzip master.zip
+    rm master.zip
+    mv ZendSkeletonModule-master/ Registrator
+
+Create Controllers and Views
+
+    Add 2 controllers:
+
+        SignUpController
+        AdminController
+
+Create Table classes
+
+    create file:
+        modules/Registrator/Model/Table/EventTable.php
+        modules/Registrator/Model/Table/RegistrationTable.php
+        modules/Registrator/Model/Table/AttendeeTable.php
+
+Create TableModule Model classes
+
+    create file:
+        modules/Registrator/Model/Event.php
+        modules/Registrator/Model/Registration.php
+        modules/Registrator/Model/Attendee.php
+
+Create services for and models
+
+        Event
+        Registration
+        Attendee
+
+Specifications for each model:
+
+    Event:
+
+        get a list of events
+
+    Registrations:
+
+        persist a registration
+        find all registrations for event
+
+    Attendees:
+
+        persist an attendee
+        find all attendees for registration
+
+
+

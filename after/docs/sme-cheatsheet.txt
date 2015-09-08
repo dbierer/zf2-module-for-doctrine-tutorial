@@ -1,0 +1,103 @@
+What is the storyline / common problem to be tackled (forming the framework for teaching)?
+
+	(This part is the same as Unit 1)
+    Your consulting company has been contracted several times to build a system to
+    handle reserved seating events such as private dinners and limited seating
+    entertainment events.  Each time, your company has built a simple and custom
+    interface to satisfy each contract, but now you've been tasked with building a
+    prototype of a more flexible system that can handle multiple events.
+
+	(***Applies to Unit 2)
+    For the original custom systems, you might have simply extended TableGatway or
+    used TableGateway directly as a Model.  In this lab, we'll be creating a full
+	domain model.  This domain model will contain a model comprising the following
+	patterns: repositories, mappers, criteria, hydrators, and entities.
+    
+    
+Teaching Exercise:
+    
+    What are the important points being taught?
+    
+        * Models in ZF2 have no one prescribed pattern
+		
+		* Domain Model is a loose term for a pattern that actually
+		  comprises multiple patterns.
+		  
+        * A domain model is a pattern that offers full domain and persistence
+		  abstraction in the modeling layer
+		  
+        * This pattern is specifically good you want to have complete ignorance of
+		  the implemented persistence in the API of the model that a controller
+		  will need to interact with.
+		  
+        * Individual pieces :
+		
+			* Repository classes - These classes are responsible for acting
+			  as the "gateway" to the collection of entities.  When a controller
+			  needs to get one of or a collection of existing entities, it will
+			  go through the Repository.
+			  
+			* Entity classes - these are the objects within the domain that have
+			  actual meaning to the business.  Sometimes they will be modeled
+			  to present the same information as a row in a database, but sometimes
+			  not.  It is important to note that Entities always have an identity
+			  of some kind.  This is typically an id in a database.  Since entity
+			  objects have identity, they are generally not shared (by reference)
+			  like value objects are (http://stackoverflow.com/questions/75446/value-vs-entity-objects-domain-driven-design)
+			  
+			* Hydrators - These objects in ZF2 are primarily responsible for
+			  getting data into newly created objects.  This is for setting
+			  up the "initial" state of a particular entity or value object.
+			  
+			* Mappers - These objects handle all the complexity of mapping the
+			  persistence layer namings and hierarchy of information into 
+			  the domain model / object graph.  For example, in the database
+			  a column might be called first_name, whereas in the
+			  object model, it is a property called firstName.  The mapper,
+			  in conjunction with the hydrator, will be able to move the values
+			  in both directions, from a column of a row in a database to
+			  a property in an object, an visa-versa.
+			  
+			* Factories - Sometimes, if the entity has enough complexity,
+			  you may want to have a factory that is capable of producing
+			  new entity objects.  This is useful when you have data coming
+			  from a different source, like a web form.  A factory can take
+			  the web form's data and produce an entity from it with all of
+			  the values mapped to the proper location.  This newly created
+			  entity can then be passed into the Repository for persistence.
+
+    Are there common pitfalls to be avoided by developers
+	
+        * Knowing when to employ particular patterns:
+			* Using a factory vs. simply using __construct & setters
+			
+		* Knowing when to employ the use of interfaces in your domain model:
+			Initially, interfaces are not necessary as a particular model might
+			only have a single kind of persistence backend.  Interfaces in models,
+			particular for repository classes allow the developer to create a
+			persistence ignorant API to present to the controller or consuming
+			object, do help the developer "see" (in two different places), which
+			parts should be concrete implementation concerns vs. which methods
+			and method names should exist in an interface as a way identify
+			what a "persistence free" API might look like.
+			
+		* Knowing when there is enough complexity in "searching" that a
+		  Criteria object is needed.
+		  
+		* Knowing when to use a home-grown approach using ZF2 vs. using
+		  Doctrine 2
+          
+    Are there best practices the students should adopt
+        ?
+        
+    What ZF2 components are being taught/discussed
+        * Zend\Db is heavily used for the Database abstraction, specifically:
+            * Zend\Db\Adapter
+            * Zend\Db\Sql
+            * Zend\Stdlib\Hydrator
+            
+    Are there links that contain relevant information for creating content (webinars, presentations, etc.)
+        * http://martinfowler.com/eaaCatalog/domainModel.html
+        * http://stackoverflow.com/questions/433819/table-module-vs-domain-model
+		* http://en.wikipedia.org/wiki/Domain-driven_design#Building_blocks_of_DDD
+		* http://stackoverflow.com/questions/75446/value-vs-entity-objects-domain-driven-design

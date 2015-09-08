@@ -1,0 +1,23 @@
+
+<table class="table table-striped">
+    <?php foreach ($registrations as $reg): ?>
+    <tr>
+        <td><?= $reg['id'] ?></td>
+        <td><?= $reg['first_name'] ?></td>
+        <td><?= $reg['last_name'] ?></td>
+        <td><?= count($reg['attendee']) . ' tickets' ?></td>
+        <td>Tickets:
+            <table class="table table-striped">
+                <?php foreach ($reg['attendee'] as $attendee): ?>
+                <tr>
+                    <td><?= $attendee['name_on_ticket'] ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </table>
+        </td>
+        <td><?= $reg['registration_time'] ?></td>
+    </tr>
+    <?php endforeach; ?>
+</table>
+
+<hr />
