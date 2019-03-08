@@ -1,19 +1,19 @@
-#TableGateway to Doctrine Tutorial
+# TableGateway to Doctrine Tutorial
 
-##Setup Infrastructure
-###Create a MySQL database
+## Setup Infrastructure
+###  Create a MySQL database
 - Call the database `registrator`
 - Restore from `/before/registrator.sql`
 
-###Setup working directory structure
+###  Setup working directory structure
 - Make a directory `/working`
 - Copy everything in `/before/*` to `/working`
 
-###Create a directory which will hold entity classes
+###  Create a directory which will hold entity classes
 - Make a directory `/working/module/Application/src/Application/Entity`
 
-##Install and Configure Doctrine
-###Install Doctrine module
+## Install and Configure Doctrine
+###  Install Doctrine module
 - Add to the `/working/composer.json` file under `require {}`
 ```
 "doctrine/doctrine-orm-module":"*"
@@ -23,7 +23,7 @@
 php composer.phar update
 ```
 
-###Configure Doctrine
+###  Configure Doctrine
 - Update `/working/config/autoload/db.local.php`
   - Add a new key 'doctrine' => [ ]
   - Add a sub-key 'connection' => [ ]
@@ -66,7 +66,7 @@ php composer.phar update
         ]
     ],
 ```
-###Test the configuration
+### Test the configuration
 - Use the doctrine command line tool
 - If you see the help screen from the command line tool, Doctrine is installed and the configuration is working
 - Fix any errors before proceeding
@@ -75,7 +75,7 @@ php composer.phar update
 /working/vendor/bin/doctrine-module  dbal:run-sql 'select * from event'
 ```
 
-##Generate Entities
+## Generate Entities
 - Make a temp directory `/working/temp`
 - Review the help information for mapping conversions
 ```
@@ -98,11 +98,11 @@ vendor/bin/doctrine-module orm:run-dql 'select e from Application\Entity\Event e
 ```
 - Fix any errors before proceeding
 
-##Define Repositories
-###Create repository classes for each entity
+## Define Repositories
+### Create repository classes for each entity
 - Create a new folder `/working/module/Application/src/Application/Repository`
 - Create a repository class for each entity, which extends `Doctrine\ORM\EntityRepository`.  You do not need to define any methods for these classes at this point.
-###Define repositories as services
+### Define repositories as services
 - Create service manager factories in `/working/module/Application/Module.php` which build instances of the repositories using the entity manager.
 ```
 use Application\Repository;
@@ -126,7 +126,7 @@ public function getServiceConfig()
     ];
 }
 ```
-###Test the repository class
+### Test the repository class
 - Rewrite `Application\Controller\AdminController::indexAction()` to use the Event repository class to find all events
 ```
 $events = $this->getServiceLocator()->get('application-repo-event')->findAll();
@@ -148,8 +148,8 @@ php -S localhost:8080 -t public
 - Fix any errors before proceeding
 
 
-##Define Relationships
-###Define 1:N between Event and Registration
+## Define Relationships
+### Define 1:N between Event and Registration
 NOTE: doctrine distinguishes between the "owning" side (i.e parent), and "inverse" (i.e. child).  In this case we are configuring the "owning" side.
 - Make the following changes in the `Application\Entity\Event` class
 - Add:
@@ -183,7 +183,7 @@ public function setRegistrations($registration)
 }
 ```
 
-###Define N:1 between Registration and Event
+### Define N:1 between Registration and Event
 You are now ready the "inverse" side of the relationship
 - Make the following changes in the `Application\Entity\Registration` class
 - Change:
@@ -204,7 +204,7 @@ private $event;
 ```
 NOTE: a suffix of "_id" is significant to doctrine, and indicates a column which defines a foreign key relationship to another table. Thus, if doctrine sees a property `$event`, which is defined as a relationship, it will look for a column `event_id`.
 
-###Define 1:N between Registration and Attendee
+### Define 1:N between Registration and Attendee
 - First we configure the "owning" side of the relationship
 - Make the following changes in the `Application\Entity\Registration` class
 - Add:
@@ -236,7 +236,7 @@ public function setAttendees(Attendee $attendee) {
 }
 ```
 
-###Define N:1 between Attendee and Registration
+### Define N:1 between Attendee and Registration
 - Next we configure the "inverse" side of the relationship
 - Make the following changes in the `Application\Entity\Attendee` class
 - Change:
@@ -256,7 +256,7 @@ private $registrationId;
 private $registration;
 ```
   
-###Update the schema
+### Update the schema
 - At this point the schema will be out of sync with the entity definitions.  You can use the command line tool to view the validation status as follows:
 ```
 vendor/bin/doctrine-module orm:validate-schema
@@ -272,7 +272,7 @@ vendor/bin/doctrine-module orm:schema-tool:update --force
 ```
 - Have a look at the database tables using your favorite tool and review the changes
 
-###Test the relationships
+### Test the relationships
 - Rewrite `Application\Controller\AdminController::listRegistrations()` to lookup the event based on the $eventId parameter, and pass the Event entity to the view.
 ```
 protected function listRegistrations($eventId)
@@ -324,9 +324,9 @@ php -S localhost:8080 -t public
 - You should see information on registrations and attendees for this event
 - Fix any errors before proceeding
 
-##Collect and "Persist" Information
+## Collect and "Persist" Information
 So far doctrine has only been used for information retrieval (i.e. SELECT and SELECT ... FROM ... JOIN ...).  Now it is time to refactor the sign-up process and to use doctrine for storage.
-###Define a repo method to save registration data
+### Define a repo method to save registration data
 - Add a new method `save()` to `Application\Repository\RegistrationRepo`
 - Accept an instance of `Application\Entity\Event`, as well as first and last name strings
 - Be sure to assign a DateTime instance to the `$registrationTime` property
@@ -356,7 +356,7 @@ class RegistrationRepo extends EntityRepository
     }
 } 
 ```
-###Define a repo method to save attendee data
+### Define a repo method to save attendee data
 - Add a new method `save()` to `Application\Repository\AttendeeRepo`
 - Accept an instance of `Application\Entity\Registration`, as well as a name string
 - Return the newly saved `Attendee` instance
@@ -381,7 +381,7 @@ class AttendeeRepo extends EntityRepository
     }
 } 
 ```
-###Refactor the event signup process
+### Refactor the event signup process
 - In `Application\Controller\SignupController::eventSignup()` to use the event repository to lookup the event based on the `$eventId` property
 ```
 protected function eventSignup($eventId)
